@@ -13,6 +13,11 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
@@ -26,9 +31,12 @@ services:
   bot:
     build: .
     container_name: amco_bot
-    command: python -m src.bot.main
-    volumes:
-      - .:/app
+    command: >
+      sh -c "
+        until nc -z $$DB_HOST $$DB_PORT; do echo 'Жду бд...'; sleep 1; done;
+        alembic upgrade head;
+        python -m src.bot.main
+      "
     environment:
       - BOT_TOKEN=${BOT_TOKEN}
       - REDIS_URL=redis://redis:6379/0
@@ -44,18 +52,23 @@ services:
       - BOT_WEBHOOK_URL=${BOT_WEBHOOK_URL}
       - BOT_USERNAME=${BOT_USERNAME}
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
     restart: always
 
   api:
     build: .
     container_name: amco_api
-    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+    command: >
+      sh -c "
+        until nc -z $$DB_HOST $$DB_PORT; do echo 'Жду бд...'; sleep 1; done;
+        alembic upgrade head;
+        uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+      "
     ports:
       - "8000:8000"
-    volumes:
-      - .:/app
     environment:
       - BOT_TOKEN=${BOT_TOKEN}
       - REDIS_URL=redis://redis:6379/0
@@ -71,8 +84,10 @@ services:
       - BOT_WEBHOOK_URL=${BOT_WEBHOOK_URL}
       - BOT_USERNAME=${BOT_USERNAME}
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
     restart: always
 
 volumes:

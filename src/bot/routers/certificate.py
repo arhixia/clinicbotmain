@@ -76,6 +76,11 @@ def kb_skip() -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text="➡️ Пропустить", callback_data="cert_skip")],
     ])
  
+def kb_start_cert() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Продолжить → ", callback_data="cert_continue")],
+        [InlineKeyboardButton(text="Отмена", callback_data="cert_cancel")],
+    ])
  
 def kb_confirm() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
@@ -103,21 +108,46 @@ def _preview_text(data: dict) -> str:
 
 
 
-
-
 #ВЫБОР НОМИНАЛА
 
 
 @router.callback_query(F.data == "cert_start")
-async def cert_start(callback: CallbackQuery, state: FSMContext):
+async def cert_intro(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await state.clear()
+    await state.set_state(CertificateStates.intro)
+    
+    text = (
+        "🎁 <b>Покупка подарочного сертификата</b>\n\n"
+        "Процесс покупки состоит из нескольких простых шагов:\n\n"
+        "1 - Вы выбираете номинал сертификата.\n"
+        "2 - Указываете имя получателя (опционально).\n"
+        "3 - Вводите телефон получателя (опционально).\n"
+        "4 - Добавляете личное поздравление (опционально).\n"
+        "Оплачиваете картой.\n\n"
+        "После оплаты ссылка на красивый сертификат придет вам в Telegram.\n\n"
+        "Готовы начать?"
+    )
+    
+    await callback.message.answer(text, reply_markup=kb_start_cert())
+
+
+
+@router.callback_query(F.data == "cert_continue", CertificateStates.intro)
+async def cert_continue_handler(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
     await state.set_state(CertificateStates.choosing_amount)
     await callback.message.answer(
-        "🎁 <b>Подарочный сертификат</b>\n\n"
-        "Выберите номинал:",
+        "Отлично! Выберите номинал сертификата:",
         reply_markup=kb_amounts(),
     )
+
+
+@router.callback_query(F.data == "cert_cancel", CertificateStates.intro)
+async def cert_cancel_handler(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await state.clear()
+    await callback.message.answer("Покупка сертификата отменена. Если передумаете — жмите /start.")
 
 
 @router.callback_query(F.data.startswith("cert_amount_"), CertificateStates.choosing_amount)
@@ -135,6 +165,7 @@ async def cert_choose_amount(callback: CallbackQuery, state: FSMContext):
     
     await state.update_data(amount=int(value))
     await _ask_recipient_name(callback.message, state)
+
 
 
 @router.message(CertificateStates.entering_amount)

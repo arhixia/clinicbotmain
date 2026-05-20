@@ -1,6 +1,7 @@
 from aiogram.fsm.state import State, StatesGroup
 
 class CertificateStates(StatesGroup):
+    intro = State()
     choosing_amount   = State()
     entering_amount   = State()  # произвольная сумма
     entering_name     = State()  # имя получателя
