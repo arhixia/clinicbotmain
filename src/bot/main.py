@@ -4,8 +4,10 @@ import os
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
+from aiogram.client.telegram import TelegramAPIServer
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.redis import RedisStorage
+from aiogram.client.session.aiohttp import AiohttpSession
 from redis.asyncio import Redis
 from src.settings.config import BOT_TOKEN, REDIS_URL, TELEGRAM_API_URL
 from src.bot.routers import help,callback_request,certificate
@@ -28,10 +30,15 @@ async def main() -> None:
     if not bot_token:
         raise ValueError("BOT_TOKEN не задан в переменных окружения")
 
+    telegram_api_server = TelegramAPIServer.from_base(base=TELEGRAM_API_URL)
+    session = AiohttpSession(api=telegram_api_server)
+
+
     bot = Bot(
         token=bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
-        api_server=TELEGRAM_API_URL
+        api_server=TELEGRAM_API_URL,
+        session=session,
     )
 
     dp = Dispatcher(storage=storage)

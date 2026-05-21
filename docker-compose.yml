@@ -44,6 +44,7 @@ services:
       - YOOKASSA_SECRET_KEY=${YOOKASSA_SECRET_KEY}
       - BOT_WEBHOOK_URL=${BOT_WEBHOOK_URL}
       - BOT_USERNAME=${BOT_USERNAME}
+      - TELEGRAM_API_URL=${TELEGRAM_API_URL}
     depends_on:
       db:
         condition: service_healthy
