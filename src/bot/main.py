@@ -7,7 +7,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.redis import RedisStorage
 from redis.asyncio import Redis
-from src.settings.config import BOT_TOKEN, REDIS_URL
+from src.settings.config import BOT_TOKEN, REDIS_URL, TELEGRAM_API_URL
 from src.bot.routers import help,callback_request,certificate
 
 
@@ -31,6 +31,7 @@ async def main() -> None:
     bot = Bot(
         token=bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+        api_server=TELEGRAM_API_URL
     )
 
     dp = Dispatcher(storage=storage)

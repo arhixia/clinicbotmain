@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:15-alpine
@@ -8,10 +6,8 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASS}
       POSTGRES_DB: ${DB_NAME}
-    ports:
-      - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - ./pgdata:/var/lib/postgresql/data
     restart: always
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
@@ -22,10 +18,8 @@ services:
   redis:
     image: redis:7-alpine
     container_name: amco_redis
-    ports:
-      - "6379:6379"
     volumes:
-      - redis_data:/data
+      - ./redis_data:/data
     restart: always
 
   bot:
@@ -33,14 +27,13 @@ services:
     container_name: amco_bot
     command: >
       sh -c "
-        until nc -z $$DB_HOST $$DB_PORT; do echo 'Жду бд...'; sleep 1; done;
-        alembic upgrade head;
+        alembic upgrade head &&
         python -m src.bot.main
       "
     environment:
       - BOT_TOKEN=${BOT_TOKEN}
-      - REDIS_URL=redis://redis:6379/0
-      - DB_HOST=db
+      - REDIS_URL=${REDIS_URL}
+      - DB_HOST=${DB_HOST}
       - DB_PORT=5432
       - DB_NAME=${DB_NAME}
       - DB_USER=${DB_USER}
@@ -63,16 +56,15 @@ services:
     container_name: amco_api
     command: >
       sh -c "
-        until nc -z $$DB_HOST $$DB_PORT; do echo 'Жду бд...'; sleep 1; done;
-        alembic upgrade head;
+        alembic upgrade head &&
         uvicorn src.api.main:app --host 0.0.0.0 --port 8000
       "
     ports:
       - "8000:8000"
     environment:
       - BOT_TOKEN=${BOT_TOKEN}
-      - REDIS_URL=redis://redis:6379/0
-      - DB_HOST=db
+      - REDIS_URL=${REDIS_URL}
+      - DB_HOST=${DB_HOST}
       - DB_PORT=5432
       - DB_NAME=${DB_NAME}
       - DB_USER=${DB_USER}
@@ -89,7 +81,3 @@ services:
       redis:
         condition: service_started
     restart: always
-
-volumes:
-  pgdata:
-  redis_data:

@@ -16,6 +16,7 @@ DB_NAME = os.environ.get('DB_NAME')
 DB_PASS = os.environ.get('DB_PASS')
 DB_USER = os.environ.get('DB_USER')
 
+TELEGRAM_API_URL=os.environ.get('TELEGRAM_API_URL')
 
 #REDIS
 REDIS_URL = os.environ.get('REDIS_URL')
