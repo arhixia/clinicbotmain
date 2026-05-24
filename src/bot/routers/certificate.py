@@ -8,6 +8,7 @@ from aiogram.types import (
     InlineKeyboardMarkup, InlineKeyboardButton,
 )
 
+from src.bot.routers.help import WELCOME_TEXT, get_main_menu
 from src.db.models import Certificate, CertificateStatus
 from src.settings.config import BOT_USERNAME
 from src.bot.states.cert_states import CertificateStates
@@ -68,6 +69,12 @@ def kb_amounts() -> InlineKeyboardMarkup:
         text="✏️ Другая сумма",
         callback_data="cert_amount_custom",
     )])
+
+    buttons.append([InlineKeyboardButton(
+        text="Обратно в меню",
+        callback_data="cert_to_menu"
+    )])
+
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
@@ -108,6 +115,16 @@ def _preview_text(data: dict) -> str:
 
 
 
+@router.callback_query(F.data == "cert_to_menu")
+async def cert_to_menu_handler(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await state.clear()
+    await callback.message.answer(
+        text=WELCOME_TEXT, 
+        reply_markup=get_main_menu()
+    )
+    
+
 #ВЫБОР НОМИНАЛА
 
 
@@ -147,8 +164,11 @@ async def cert_continue_handler(callback: CallbackQuery, state: FSMContext):
 async def cert_cancel_handler(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await state.clear()
-    await callback.message.answer("Покупка сертификата отменена. Если передумаете — жмите /start.")
-
+    
+    await callback.message.answer(
+        text=WELCOME_TEXT, 
+        reply_markup=get_main_menu()
+    )
 
 @router.callback_query(F.data.startswith("cert_amount_"), CertificateStates.choosing_amount)
 async def cert_choose_amount(callback: CallbackQuery, state: FSMContext):

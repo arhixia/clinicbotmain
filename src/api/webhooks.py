@@ -9,7 +9,7 @@ from sqlalchemy import select
 from src.bot.routers.user_service import create_certificate_deal_in_crm
 from src.db.database import AsyncSessionLocal
 from src.db.models import Certificate, CertificateStatus
-from src.settings.config import BOT_TOKEN, BOT_WEBHOOK_URL
+from src.settings.config import BOT_TOKEN, BOT_USERNAME, BOT_WEBHOOK_URL
 
 
 router = APIRouter()
@@ -75,7 +75,8 @@ async def yookassa_webhook(request: Request, background_tasks: BackgroundTasks):
         )
 
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🎁 Открыть сертификат", url=cert_link)]
+            [InlineKeyboardButton(text="🎁 Открыть сертификат", url=cert_link)],
+            [InlineKeyboardButton(text="🏠 В главное меню", callback_data="back_to_menu")]
         ])
 
         if cert.buyer_telegram_id:

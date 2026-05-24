@@ -7,6 +7,7 @@ from aiogram.types import (
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import StateFilter
 
+from src.bot.routers.help import WELCOME_TEXT, get_main_menu
 from src.bot.states.callback_states import CallbackStates
 from src.services.amo_crm import AmoCRMService
 from src.db.database import AsyncSessionLocal
@@ -33,8 +34,12 @@ async def process_callback_start(callback: CallbackQuery, state: FSMContext) -> 
         )
         await callback.message.answer(
             "✅ <b>Заявка принята!</b>\n\n"
-            f"Перезвоним на номер <b>{phone}</b> в ближайшее время.\n"
-            "Спасибо, что выбрали нас! 🙏"
+            f"Перезвоним на номер <b>{phone}</b> в ближайшее время."
+        )
+        
+        await callback.message.answer(
+            text=WELCOME_TEXT, 
+            reply_markup=get_main_menu()
         )
         return
 
@@ -73,13 +78,16 @@ async def process_phone_contact(message: Message, state: FSMContext) -> None:
     
     await message.answer(
         "✅ <b>Заявка принята!</b>\n\n"
-        "Мы перезвоним вам в ближайшее время.\n"
-        "Спасибо, что выбрали нас! 🙏",
-        reply_markup=ReplyKeyboardRemove(),
+        "Мы перезвоним вам в ближайшее время."
+    )
+
+    await message.answer(
+        text=WELCOME_TEXT, 
+        reply_markup=get_main_menu()
     )
 
 
 @router.message(StateFilter(CallbackStates.waiting_for_phone), F.text == "❌ Отмена")
 async def process_callback_cancel(message: Message, state: FSMContext) -> None:
     await state.clear()
-    await message.answer("Отменено.", reply_markup=ReplyKeyboardRemove())
+    await message.answer("Отменено.", reply_markup=get_main_menu())
