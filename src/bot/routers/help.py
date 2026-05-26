@@ -24,6 +24,9 @@ class OnboardingStates(StatesGroup):
     waiting_for_phone = State()
 
 
+PRIVACY_POLICY_URL = "https://amco.clinic/politicdata"
+
+
 WELCOME_TEXT = """
 ✨ <b>Добро пожаловать в салон красоты!</b>
 
@@ -81,11 +84,18 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
 
     if not phone:
         await state.set_state(OnboardingStates.waiting_for_phone)
-        await message.answer(
+
+        privacy_text = (
             "👋 <b>Добро пожаловать!</b>\n\n"
             "Для начала работы поделитесь вашим номером телефона — "
-            "это нужно для записи и обратного звонка.",
+            "это нужно для записи и обратного звонка.\n\n"
+            f"Пользуясь ботом, вы соглашаетесь с нашей <a href='{PRIVACY_POLICY_URL}'>политикой конфиденциальности</a>."
+        )
+        
+        await message.answer(
+            text=privacy_text,
             reply_markup=_phone_keyboard(),
+            parse_mode="HTML" 
         )
         return
 
