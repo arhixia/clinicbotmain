@@ -3,3 +3,7 @@ tests/
 __pycache__
 *.pyc
 .env
+redis_data/
+pg_data/
+
+

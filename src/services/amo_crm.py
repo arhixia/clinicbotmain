@@ -12,49 +12,66 @@ class AmoCRMService:
             "Authorization": f"Bearer {AMO_ACCESS_TOKEN}",
             "Content-Type": "application/json",
         }
+        logger.info(f"AmoCRM Service initialized. Domain: {AMO_DOMAIN}, Callback Pipeline ID: {PIPELINE_ID}")
 
     def create_new_user_lead(self, user_id, username, first_name, phone) -> int | None:
-        """Создает сделку в воронке 'Новые пользователи'"""
         try:
+            logger.info(f"Creating new user lead for user_id={user_id}")
             contact_id = self._get_or_create_contact(tg_id=user_id, username=username, first_name=first_name, phone=phone)
             
             lead_name = f"Новый пользователь: @{username}" if username else f"New User ID {user_id}"
             
-            resp = requests.post(f"{self.base_url}/leads", headers=self.headers, json=[{
+            payload = [{
                 "name": lead_name,
                 "pipeline_id": NEW_USERS_PIPELINE_ID,
                 "_embedded": {
                     "contacts": [{"id": contact_id}],
                     "tags": [{"name": "Telegram Bot"}, {"name": "New User"}],
                 },
-            }])
+            }]
+            logger.debug(f"Payload for new user lead: {payload}")
+
+            resp = requests.post(f"{self.base_url}/leads", headers=self.headers, json=payload)
+            logger.info(f"AmoCRM Response Status: {resp.status_code}")
+            logger.debug(f"AmoCRM Response Body: {resp.text}")
+            
             resp.raise_for_status()
             lead_id = resp.json()["_embedded"]["leads"][0]["id"]
             logger.info(f"Сделка нового пользователя создана: {lead_id}")
             return lead_id
         except Exception as e:
-            logger.error(f"Ошибка создания сделки нового пользователя: {e}")
+            logger.error(f"Ошибка создания сделки нового пользователя: {e}", exc_info=True)
             return None
         
 
     def create_callback_lead(self, user_id, username, first_name, phone) -> int | None:
         try:
+            logger.info(f"Creating callback lead for user_id={user_id}, phone={phone}")
             contact_id = self._get_or_create_contact(tg_id=user_id, username=username, first_name=first_name, phone=phone)
+            logger.info(f"Contact ID for callback: {contact_id}")
+
             lead_name = f"Звонок: @{username}" if username else f"Звонок: {first_name or 'ID ' + str(user_id)}"
-            resp = requests.post(f"{self.base_url}/leads", headers=self.headers, json=[{
+            
+            payload = [{
                 "name": lead_name,
                 "pipeline_id": PIPELINE_ID,
                 "_embedded": {
                     "contacts": [{"id": contact_id}],
                     "tags": [{"name": "Telegram"}, {"name": "Callback"}],
                 },
-            }])
+            }]
+            logger.debug(f"Payload for callback lead: {payload}")
+
+            resp = requests.post(f"{self.base_url}/leads", headers=self.headers, json=payload)
+            logger.info(f"AmoCRM Response Status: {resp.status_code}")
+            logger.debug(f"AmoCRM Response Body: {resp.text}")
+
             resp.raise_for_status()
             lead_id = resp.json()["_embedded"]["leads"][0]["id"]
             logger.info(f"Сделка звонка создана: {lead_id}")
             return lead_id
         except Exception as e:
-            logger.error(f"Ошибка создания сделки (callback): {e}")
+            logger.error(f"Ошибка создания сделки (callback): {e}", exc_info=True)
             return None
 
     def create_referral_lead(
@@ -67,6 +84,7 @@ class AmoCRMService:
         referred_phone: str | None = None,
     ) -> int | None:
         try:
+            logger.info(f"Creating referral lead: {referrer_id} -> {referred_id}")
             referrer_contact_id = self._get_or_create_contact(
                 tg_id=referrer_id, username=referrer_username, phone=referrer_phone
             )
@@ -77,7 +95,7 @@ class AmoCRMService:
             referrer_name = f"@{referrer_username}" if referrer_username else f"ID {referrer_id}"
             referred_name = f"@{referred_username}" if referred_username else f"ID {referred_id}"
 
-            resp = requests.post(f"{self.base_url}/leads", headers=self.headers, json=[{
+            payload = [{
                 "name": f"Реферал: {referrer_name} → {referred_name}",
                 "pipeline_id": REFERRAL_PIPILINE_ID,
                 "_embedded": {
@@ -87,7 +105,13 @@ class AmoCRMService:
                     ],
                     "tags": [{"name": "Telegram"}, {"name": "Referral"}],
                 },
-            }])
+            }]
+            logger.debug(f"Payload for referral lead: {payload}")
+
+            resp = requests.post(f"{self.base_url}/leads", headers=self.headers, json=payload)
+            logger.info(f"AmoCRM Response Status: {resp.status_code}")
+            logger.debug(f"AmoCRM Response Body: {resp.text}")
+
             resp.raise_for_status()
             lead_id = resp.json()["_embedded"]["leads"][0]["id"]
 
@@ -102,21 +126,24 @@ class AmoCRMService:
             logger.info(f"Реферальная сделка создана: {lead_id}")
             return lead_id
         except Exception as e:
-            logger.error(f"Ошибка создания реферальной сделки: {e}")
+            logger.error(f"Ошибка создания реферальной сделки: {e}", exc_info=True)
             return None
 
     def _get_or_create_contact(self, tg_id, username, first_name=None, phone=None) -> int:
-        """Ищет контакт по телефону или TG ID, если нет - создает"""
+        logger.debug(f"Getting or creating contact for tg_id={tg_id}, phone={phone}")
         if phone:
             resp = requests.get(
                 f"{self.base_url}/contacts", 
                 headers=self.headers, 
                 params={"query": phone}
             )
+            logger.debug(f"Search contact response status: {resp.status_code}")
             if resp.status_code == 200:
                 contacts = resp.json()['_embedded']['contacts']
                 if contacts:
+                    logger.info(f"Contact found by phone: {contacts[0]['id']}")
                     return contacts[0]['id']
+        
         contact_name = f"@{username}" if username else first_name or f"TG_User_{tg_id}"
         contact_data = {"name": contact_name}
         custom_fields = []
@@ -128,17 +155,25 @@ class AmoCRMService:
         if custom_fields:
             contact_data["custom_fields_values"] = custom_fields
 
+        logger.debug(f"Creating new contact with data: {contact_data}")
         resp = requests.post(f"{self.base_url}/contacts", headers=self.headers, json=[contact_data])
+        logger.info(f"Create contact response status: {resp.status_code}")
+        logger.debug(f"Create contact response body: {resp.text}")
+        
         resp.raise_for_status()
-        return resp.json()["_embedded"]["contacts"][0]["id"]
+        new_id = resp.json()["_embedded"]["contacts"][0]["id"]
+        logger.info(f"New contact created: {new_id}")
+        return new_id
 
     def _add_note(self, lead_id: int, text: str) -> None:
         try:
-            requests.post(
+            logger.debug(f"Adding note to lead {lead_id}")
+            resp = requests.post(
                 f"{self.base_url}/leads/{lead_id}/notes",
                 headers=self.headers,
                 json=[{"entity_id": lead_id, "note_type": "common", "params": {"text": text}}],
             )
+            logger.debug(f"Add note response status: {resp.status_code}")
         except Exception as e:
             logger.warning(f"Не удалось добавить примечание: {e}")
         
@@ -153,11 +188,8 @@ class AmoCRMService:
         recipient_phone: str | None = None,
         cert_link: str | None = None,
     ) -> int | None:
-        """
-        Создает сделку в воронке 'Сертификаты' (CERTIFICATE_PIPELINE_ID).
-        """
-
         try:
+            logger.info(f"Creating certificate lead for cert_id={cert_id}")
             buyer_contact_id = None
             if buyer_phone or buyer_tg_id:
                 buyer_contact_id = self._get_or_create_contact(
@@ -186,8 +218,7 @@ class AmoCRMService:
             if recipient_contact_id:
                 embedded_contacts.append({"id": recipient_contact_id})
 
-            
-            resp = requests.post(f"{self.base_url}/leads", headers=self.headers, json=[{
+            payload = [{
                 "name": lead_name,
                 "pipeline_id": CERTIFICATE_PIPELINE_ID, 
                 "price": amount,
@@ -195,7 +226,13 @@ class AmoCRMService:
                     "contacts": embedded_contacts,
                     "tags": [{"name": "Certificate"}, {"name": "YooKassa"}],
                 },
-            }])
+            }]
+            logger.debug(f"Payload for certificate lead: {payload}")
+
+            resp = requests.post(f"{self.base_url}/leads", headers=self.headers, json=payload)
+            logger.info(f"AmoCRM Response Status: {resp.status_code}")
+            logger.debug(f"AmoCRM Response Body: {resp.text}")
+
             resp.raise_for_status()
             lead_id = resp.json()["_embedded"]["leads"][0]["id"]
             
